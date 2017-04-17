@@ -1,0 +1,59 @@
+#!/bin/bash
+#nagios check
+#makes API call to foreman to see when host last checked in to puppet.
+#
+#secondly, it checks if any of those check-ins were successful
+#initial variables
+foreman"foremanhostname"
+userpass="user:password"
+curl_timeout="15"
+deadline="72"
+
+#step 1:
+#alert if host has not reported in past N hours
+N="$deadline"
+#
+#
+#get current date in unixtime
+CurDate=$(date +%s)
+#get hostname from puppet facter -- facter -p fqdn
+FQDN=$(facter -p fqdn)
+#get time of last run
+LastRun=$(curl -m $curl_timeout -sk -u $userpass -H "Accept: version=2,application/json" \
+    https://$foreman/api/hosts/$FQDN/reports/last \
+    | awk -Freported_at\"\:\" '{print $2}' | awk -F\" '{print $1}')
+if [ $? -ne 0 ]
+        then echo "curl error"
+        exit 0
+fi
+# output format is 2017-04-11T18:19:32Z
+#convert d8tes to unixtime
+LastRunReformatted=$(echo $LastRun | sed 's/T/\ /' | sed 's/Z/\ /')
+LastRunUnixtime=$(date -u --date="$LastRunReformatted" +"%s")
+#Diff=$(expr $CurDate - $LastRunUnixtime)
+Diff=$(( $CurDate - $LastRunUnixtime))
+Secs=$(( $N * 3600 ))
+if [ $Diff -gt $Secs ]
+  then
+    echo "No recent runs"
+    echo "1"
+    exit 1
+fi
+# part 2... are there successful entries.
+
+output=$(curl -m $curl_timeout -sk -u $userpass -H "Accept: version=2,application/json" https://$foreman/api/hosts/$FQDN/reports )
+if [ $? -ne 0 ]
+    then echo "curl error 2."
+    exit 0
+fi
+output2=$(echo $output | sed -e 's/[{}]/''/g' | \
+awk -v k="text" '{n=split($0,a,","); for (i=1; i<=n; i++) print a[i]}' | \
+egrep 'skipped|success'| grep -v 0 )
+if [ -z "$output2" ]
+  then
+    echo "no successful runs"
+    echo "1"
+    exit 1
+fi
+echo "0"
+exit 0

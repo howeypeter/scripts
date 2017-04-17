@@ -4,7 +4,7 @@
 #
 #secondly, it checks if any of those check-ins were successful
 #initial variables
-foreman"foremanhostname"
+foreman="foremanhostname"
 userpass="user:password"
 curl_timeout="15"
 deadline="72"

@@ -20,7 +20,7 @@ class hmacLLNW:
     token = hmac.new(apiKey.decode('hex'), msg=datastring,digestmod=hashlib.sha256).hexdigest()
     return token
 if __name__ == '__main__':
-  profile='phowey1'
+  profile='default'
   config = ConfigParser.RawConfigParser()
   config.read([os.path.expanduser('~/.llnw/credentials')])
   userName = config.get(profile, 'userName')
